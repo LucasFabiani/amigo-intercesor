@@ -79,14 +79,25 @@ createGroupBtn.onclick = async () => {
   const name = groupNameInput.value.trim();
   if (!name) return;
 
-  const snapshot = await getDocs(collection(db, "groups"));
-  const exists = snapshot.docs.some(d =>
-    d.data().name.toLowerCase() === name.toLowerCase()
-  );
+  try {
+    const snapshot = await getDocs(collection(db, "groups"));
 
-  if (exists) {
-    alert("Ya existe ese grupo");
-    return;
+    let exists = false;
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.name && data.name.toLowerCase() === name.toLowerCase()) {
+        exists = true;
+      }
+    });
+
+    if (exists) {
+      alert("Ya existe ese grupo");
+      return;
+    }
+
+  } catch (e) {
+    // Si la colección no existe todavía, Firestore devuelve snapshot vacío.
+    // No hacemos nada.
   }
 
   const docRef = await addDoc(collection(db, "groups"), {
