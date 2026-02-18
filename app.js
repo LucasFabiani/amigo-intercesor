@@ -1,3 +1,5 @@
+import { firebaseConfig } from "./firebase-config.js";
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore,
@@ -13,12 +15,6 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID"
-};
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -33,7 +29,6 @@ function getSessionId() {
 
 const sessionId = getSessionId();
 
-const searchInput = document.getElementById("searchInput");
 const groupList = document.getElementById("groupList");
 const groupNameInput = document.getElementById("groupName");
 const createGroupBtn = document.getElementById("createGroupBtn");
@@ -67,40 +62,21 @@ async function loadGroups() {
   });
 }
 
-searchInput.oninput = () => {
-  const term = searchInput.value.toLowerCase();
-  [...groupList.children].forEach(btn => {
-    btn.style.display = btn.textContent.toLowerCase().includes(term)
-      ? "block" : "none";
-  });
-};
-
 createGroupBtn.onclick = async () => {
   const name = groupNameInput.value.trim();
   if (!name) return;
 
-  try {
-    const snapshot = await getDocs(collection(db, "groups"));
+  const snapshot = await getDocs(collection(db, "groups"));
+  const exists = snapshot.docs.some(d =>
+    d.data().name?.toLowerCase() === name.toLowerCase()
+  );
 
-    let exists = false;
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.name && data.name.toLowerCase() === name.toLowerCase()) {
-        exists = true;
-      }
-    });
-
-    if (exists) {
-      alert("Ya existe ese grupo");
-      return;
-    }
-
-  } catch (e) {
-    // Si la colección no existe todavía, Firestore devuelve snapshot vacío.
-    // No hacemos nada.
+  if (exists) {
+    alert("Ya existe ese grupo");
+    return;
   }
 
-  const docRef = await addDoc(collection(db, "groups"), {
+  await addDoc(collection(db, "groups"), {
     name,
     adminSessionId: sessionId,
     autoWeekly: false,
@@ -108,8 +84,7 @@ createGroupBtn.onclick = async () => {
   });
 
   groupNameInput.value = "";
-  await loadGroups();
-  openGroup(docRef.id);
+  loadGroups();
 };
 
 async function openGroup(groupId) {
@@ -123,26 +98,9 @@ async function openGroup(groupId) {
 
   deleteGroupBtn.style.display = groupData.adminSessionId === sessionId ? "block" : "none";
   drawBtn.style.display = groupData.adminSessionId === sessionId ? "block" : "none";
-  autoDrawCheck.style.display = groupData.adminSessionId === sessionId ? "inline" : "none";
-
-  autoDrawCheck.checked = groupData.autoWeekly || false;
-
-  autoDrawCheck.onchange = async () => {
-    await updateDoc(doc(db, "groups", groupId), {
-      autoWeekly: autoDrawCheck.checked
-    });
-  };
 
   listenParticipants();
   listenAssignments();
-  checkAutoDraw(groupData);
-}
-
-async function checkAutoDraw(groupData) {
-  const today = new Date();
-  if (groupData.autoWeekly && today.getDay() === 0 && groupData.adminSessionId === sessionId) {
-    draw();
-  }
 }
 
 joinBtn.onclick = async () => {
@@ -158,21 +116,6 @@ joinBtn.onclick = async () => {
   });
 
   myParticipantId = docRef.id;
-};
-
-leaveBtn.onclick = async () => {
-  if (!myParticipantId) return;
-  await deleteDoc(doc(db, "groups", currentGroupId, "participants", myParticipantId));
-  myParticipantId = null;
-  resultDiv.innerHTML = "";
-};
-
-editIntentionBtn.onclick = async () => {
-  const newIntention = prompt("Nueva intención:");
-  if (!newIntention) return;
-  await updateDoc(doc(db, "groups", currentGroupId, "participants", myParticipantId), {
-    intention: newIntention
-  });
 };
 
 function listenParticipants() {
@@ -191,8 +134,6 @@ function listenParticipants() {
 
       if (data.sessionId === sessionId) {
         myParticipantId = docSnap.id;
-        leaveBtn.style.display = "block";
-        editIntentionBtn.style.display = "block";
         joinBtn.style.display = "none";
       }
     });
@@ -224,12 +165,6 @@ async function draw() {
 }
 
 drawBtn.onclick = draw;
-
-deleteGroupBtn.onclick = async () => {
-  await deleteDoc(doc(db, "groups", currentGroupId));
-  groupSection.style.display = "none";
-  loadGroups();
-};
 
 function listenAssignments() {
   onSnapshot(doc(db, "groups", currentGroupId, "assignments", "current"), docSnap => {
