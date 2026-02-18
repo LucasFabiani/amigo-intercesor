@@ -113,46 +113,57 @@ async function initGroup() {
     });
   });
 
-  joinBtn.onclick = async () => {
-    if (myId) return;
-    await addDoc(collection(db, "groups", groupId, "participants"), {
-      name: participantName.value,
-      intention: participantIntention.value,
-      sessionId,
-      createdAt: serverTimestamp()
-    });
-  };
+   if (joinBtn) {
+    joinBtn.onclick = async () => {
+      if (myId) return;
+      await addDoc(collection(db, "groups", groupId, "participants"), {
+        name: participantName.value,
+        intention: participantIntention.value,
+        sessionId,
+        createdAt: serverTimestamp()
+      });
+    };
+  }
 
-  editBtn.onclick = async () => {
-    const newIntention = prompt("Nueva intención:");
-    if (!newIntention) return;
-    await updateDoc(doc(db, "groups", groupId, "participants", myId), {
-      intention: newIntention
-    });
-  };
+  if (editBtn) {
+    editBtn.onclick = async () => {
+      if (!myId) return;
+      const newIntention = prompt("Nueva intención:");
+      if (!newIntention) return;
+      await updateDoc(doc(db, "groups", groupId, "participants", myId), {
+        intention: newIntention
+      });
+    };
+  }
 
-  leaveBtn.onclick = async () => {
-    await deleteDoc(doc(db, "groups", groupId, "participants", myId));
-    window.location.reload();
-  };
+  if (leaveBtn) {
+    leaveBtn.onclick = async () => {
+      if (!myId) return;
+      await deleteDoc(doc(db, "groups", groupId, "participants", myId));
+      window.location.reload();
+    };
+  }
 
-  deleteGroupBtn.onclick = async () => {
-    if (groupData.adminSessionId !== sessionId) return;
-    await deleteDoc(doc(db, "groups", groupId));
-    window.location.href = "index.html";
-  };
+  if (deleteGroupBtn) {
+    deleteGroupBtn.onclick = async () => {
+      if (groupData.adminSessionId !== sessionId) return;
+      await deleteDoc(doc(db, "groups", groupId));
+      window.location.href = "index.html";
+    };
+  }
 
-  drawBtn.onclick = async () => {
-    if (participants.length < 2) return;
-
-    const shuffled = [...participants].sort(() => Math.random() - 0.5);
-    const pairs = participants.map((p, i) => ({
-      from: p.id,
-      to: shuffled[i].id
-    }));
-
-    await setDoc(doc(db, "groups", groupId, "assignments", "current"), { pairs });
-  };
+  if (drawBtn) {
+    drawBtn.onclick = async () => {
+      if (participants.length < 2) return;
+      const shuffled = [...participants].sort(() => Math.random() - 0.5);
+      const pairs = participants.map((p, i) => ({
+        from: p.id,
+        to: shuffled[i].id
+      }));
+      await setDoc(doc(db, "groups", groupId, "assignments", "current"), { pairs });
+    };
+  
+  }
 
   onSnapshot(doc(db, "groups", groupId, "assignments", "current"), snap => {
     if (!snap.exists()) return;
