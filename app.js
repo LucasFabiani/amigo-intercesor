@@ -104,7 +104,8 @@ async function initGroup() {
 
       if (groupData.adminSessionId === sessionId) {
         const del = document.createElement("button");
-        del.textContent = "Eliminar";
+        del.textContent = "X";
+        del.width = "100px";
         del.onclick = () => deleteDoc(doc(db, "groups", groupId, "participants", docSnap.id));
         card.appendChild(del);
       }
