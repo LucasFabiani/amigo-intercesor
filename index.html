@@ -2,25 +2,41 @@
 <html>
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Oración Anónima</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-<h1>Grupos de oración</h1>
+<h1 class="main-title">Oración Anónima</h1>
 
-<div id="groupList" class="group-buttons"></div>
+<img class="hero-img" src="https://upload.wikimedia.org/wikipedia/commons/5/5c/Communion_of_Saints.jpg" />
 
-<h2>Crear grupo</h2>
-<input id="groupName" placeholder="Nombre del grupo" />
-<button id="createGroupBtn">Crear</button>
+<div class="nav">
+  <input id="searchInput" placeholder="Buscar grupo..." />
+</div>
+
+<div id="groupList" class="group-list"></div>
+
+<div class="create-section">
+  <input id="groupName" placeholder="Nombre del grupo" />
+  <button id="createGroupBtn">Crear Grupo</button>
+</div>
 
 <hr />
 
 <div id="groupSection" style="display:none">
-  <h2 id="groupTitle"></h2>
+  <h2 id="groupTitle" class="center"></h2>
 
-  <button id="deleteGroupBtn" style="display:none">Eliminar grupo</button>
+  <div class="admin-actions">
+    <button id="drawBtn">Sortear</button>
+    <label class="auto-label">
+      <input type="checkbox" id="autoDrawCheck" /> Sorteo automático domingo
+    </label>
+    <button id="deleteGroupBtn">Eliminar Grupo</button>
+  </div>
+
+  <div id="result" class="result-box"></div>
 
   <div id="joinSection">
     <input id="participantName" placeholder="Tu nombre" />
@@ -28,13 +44,15 @@
     <button id="joinBtn">Unirme</button>
   </div>
 
+  <button id="leaveBtn" style="display:none">Salir del grupo</button>
+  <button id="editIntentionBtn" style="display:none">Editar intención</button>
+
   <h3>Participantes</h3>
-  <div id="participants" class="grid"></div>
-
-  <button id="drawBtn" style="display:none">Sortear</button>
-
-  <div id="result"></div>
+  <div id="participants" class="participants"></div>
 </div>
+
+<div class="ornament">──────── ❁ ────────</div>
+<div class="footer">© Lucas Fabiani 2026</div>
 
 <script type="module" src="app.js"></script>
 </body>

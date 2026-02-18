@@ -7,19 +7,17 @@ import {
   doc,
   deleteDoc,
   setDoc,
+  updateDoc,
+  getDoc,
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAnkkL17pCQseNuVcsBTh-P2CJbf4nxuss",
-    authDomain: "amigo-intercesor.firebaseapp.com",
-    projectId: "amigo-intercesor",
-    storageBucket: "amigo-intercesor.firebasestorage.app",
-    messagingSenderId: "313076200944",
-    appId: "1:313076200944:web:a00d3ab29d8014278f1935",
-    measurementId: "G-YDJX2BNSN6"
-  };
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_AUTH_DOMAIN",
+  projectId: "TU_PROJECT_ID"
+};
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -35,23 +33,26 @@ function getSessionId() {
 
 const sessionId = getSessionId();
 
+const searchInput = document.getElementById("searchInput");
 const groupList = document.getElementById("groupList");
-const createGroupBtn = document.getElementById("createGroupBtn");
 const groupNameInput = document.getElementById("groupName");
-
+const createGroupBtn = document.getElementById("createGroupBtn");
 const groupSection = document.getElementById("groupSection");
 const groupTitle = document.getElementById("groupTitle");
-const deleteGroupBtn = document.getElementById("deleteGroupBtn");
+const participantsDiv = document.getElementById("participants");
 const joinBtn = document.getElementById("joinBtn");
 const participantName = document.getElementById("participantName");
 const participantIntention = document.getElementById("participantIntention");
-const participantsDiv = document.getElementById("participants");
-const drawBtn = document.getElementById("drawBtn");
 const resultDiv = document.getElementById("result");
-const joinSection = document.getElementById("joinSection");
+const drawBtn = document.getElementById("drawBtn");
+const deleteGroupBtn = document.getElementById("deleteGroupBtn");
+const leaveBtn = document.getElementById("leaveBtn");
+const editIntentionBtn = document.getElementById("editIntentionBtn");
+const autoDrawCheck = document.getElementById("autoDrawCheck");
 
 let currentGroupId = null;
-let currentParticipants = [];
+let myParticipantId = null;
+let participants = [];
 
 async function loadGroups() {
   const snapshot = await getDocs(collection(db, "groups"));
@@ -60,75 +61,111 @@ async function loadGroups() {
   snapshot.forEach(docSnap => {
     const data = docSnap.data();
     const btn = document.createElement("button");
-    btn.className = "group-btn";
     btn.textContent = data.name;
-    btn.onclick = () => openGroup(docSnap.id, data);
+    btn.onclick = () => openGroup(docSnap.id);
     groupList.appendChild(btn);
   });
 }
+
+searchInput.oninput = () => {
+  const term = searchInput.value.toLowerCase();
+  [...groupList.children].forEach(btn => {
+    btn.style.display = btn.textContent.toLowerCase().includes(term)
+      ? "block" : "none";
+  });
+};
 
 createGroupBtn.onclick = async () => {
   const name = groupNameInput.value.trim();
   if (!name) return;
 
   const snapshot = await getDocs(collection(db, "groups"));
-  const exists = snapshot.docs.some(d => d.data().name.toLowerCase() === name.toLowerCase());
-
-  if (exists) {
-    alert("Ya existe un grupo con ese nombre");
+  if (snapshot.docs.some(d => d.data().name.toLowerCase() === name.toLowerCase())) {
+    alert("Ya existe ese grupo");
     return;
   }
 
-  await addDoc(collection(db, "groups"), {
+  const docRef = await addDoc(collection(db, "groups"), {
     name,
     adminSessionId: sessionId,
+    autoWeekly: false,
     createdAt: serverTimestamp()
   });
 
-  groupNameInput.value = "";
-  loadGroups();
+  openGroup(docRef.id);
 };
 
-function openGroup(groupId, groupData) {
+async function openGroup(groupId) {
   currentGroupId = groupId;
   groupSection.style.display = "block";
+
+  const groupDoc = await getDoc(doc(db, "groups", groupId));
+  const groupData = groupDoc.data();
+
   groupTitle.textContent = groupData.name;
 
-  deleteGroupBtn.style.display = groupData.adminSessionId === sessionId ? "inline-block" : "none";
-  drawBtn.style.display = groupData.adminSessionId === sessionId ? "inline-block" : "none";
+  deleteGroupBtn.style.display = groupData.adminSessionId === sessionId ? "block" : "none";
+  drawBtn.style.display = groupData.adminSessionId === sessionId ? "block" : "none";
+  autoDrawCheck.style.display = groupData.adminSessionId === sessionId ? "inline" : "none";
+
+  autoDrawCheck.checked = groupData.autoWeekly || false;
+
+  autoDrawCheck.onchange = async () => {
+    await updateDoc(doc(db, "groups", groupId), {
+      autoWeekly: autoDrawCheck.checked
+    });
+  };
 
   listenParticipants();
   listenAssignments();
+  checkAutoDraw(groupData);
 }
 
-deleteGroupBtn.onclick = async () => {
-  if (!confirm("¿Seguro que deseas eliminar el grupo?") ) return;
-  await deleteDoc(doc(db, "groups", currentGroupId));
-  groupSection.style.display = "none";
-  loadGroups();
-};
+async function checkAutoDraw(groupData) {
+  const today = new Date();
+  if (groupData.autoWeekly && today.getDay() === 0 && groupData.adminSessionId === sessionId) {
+    draw();
+  }
+}
 
 joinBtn.onclick = async () => {
-  if (!participantName.value || !participantIntention.value) return;
+  const name = participantName.value;
+  const intention = participantIntention.value;
+  if (!name || !intention) return;
 
-  await addDoc(collection(db, "groups", currentGroupId, "participants"), {
-    name: participantName.value,
-    intention: participantIntention.value,
+  const docRef = await addDoc(collection(db, "groups", currentGroupId, "participants"), {
+    name,
+    intention,
     sessionId,
     createdAt: serverTimestamp()
   });
 
-  joinSection.style.display = "none";
+  myParticipantId = docRef.id;
+};
+
+leaveBtn.onclick = async () => {
+  if (!myParticipantId) return;
+  await deleteDoc(doc(db, "groups", currentGroupId, "participants", myParticipantId));
+  myParticipantId = null;
+  resultDiv.innerHTML = "";
+};
+
+editIntentionBtn.onclick = async () => {
+  const newIntention = prompt("Nueva intención:");
+  if (!newIntention) return;
+  await updateDoc(doc(db, "groups", currentGroupId, "participants", myParticipantId), {
+    intention: newIntention
+  });
 };
 
 function listenParticipants() {
   onSnapshot(collection(db, "groups", currentGroupId, "participants"), snapshot => {
     participantsDiv.innerHTML = "";
-    currentParticipants = [];
+    participants = [];
 
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
-      currentParticipants.push({ id: docSnap.id, ...data });
+      participants.push({ id: docSnap.id, ...data });
 
       const card = document.createElement("div");
       card.className = "card";
@@ -136,7 +173,10 @@ function listenParticipants() {
       participantsDiv.appendChild(card);
 
       if (data.sessionId === sessionId) {
-        joinSection.style.display = "none";
+        myParticipantId = docSnap.id;
+        leaveBtn.style.display = "block";
+        editIntentionBtn.style.display = "block";
+        joinBtn.style.display = "none";
       }
     });
   });
@@ -151,20 +191,27 @@ function derangement(n) {
   return shuffled;
 }
 
-drawBtn.onclick = async () => {
-  if (currentParticipants.length < 2) return alert("Mínimo 2 participantes");
-
-  const indices = derangement(currentParticipants.length);
+async function draw() {
+  if (participants.length < 2) return;
+  const indices = derangement(participants.length);
 
   const pairs = indices.map((toIndex, fromIndex) => ({
-    from: currentParticipants[fromIndex].id,
-    to: currentParticipants[toIndex].id
+    from: participants[fromIndex].id,
+    to: participants[toIndex].id
   }));
 
   await setDoc(doc(db, "groups", currentGroupId, "assignments", "current"), {
     pairs,
     createdAt: serverTimestamp()
   });
+}
+
+drawBtn.onclick = draw;
+
+deleteGroupBtn.onclick = async () => {
+  await deleteDoc(doc(db, "groups", currentGroupId));
+  groupSection.style.display = "none";
+  loadGroups();
 };
 
 function listenAssignments() {
@@ -172,19 +219,15 @@ function listenAssignments() {
     if (!docSnap.exists()) return;
 
     const data = docSnap.data();
-    const me = currentParticipants.find(p => p.sessionId === sessionId);
-    if (!me) return;
-
-    const pair = data.pairs.find(p => p.from === me.id);
+    const pair = data.pairs.find(p => p.from === myParticipantId);
     if (!pair) return;
 
-    const assigned = currentParticipants.find(p => p.id === pair.to);
+    const assigned = participants.find(p => p.id === pair.to);
     if (!assigned) return;
 
     resultDiv.innerHTML = `
       <h3>Te toca rezar por:</h3>
       <p><strong>${assigned.name}</strong></p>
-      <p>Intención: ${assigned.intention}</p>
       <p><em>"Soportense mutuamente" (Col 3, 13)</em></p>
     `;
   });
