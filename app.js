@@ -176,7 +176,7 @@ async function initGroup() {
     resultDiv.innerHTML = `
       <h3>Te toca rezar por:</h3>
       <p><strong>${assigned.name}</strong></p>
-      <p>${assigned.intention}</p>
+      <p>Intención: ${assigned.intention}</p>
       <p><em>"Soportense mutuamente" (Col 3, 13)</em></p>
     `;
   });

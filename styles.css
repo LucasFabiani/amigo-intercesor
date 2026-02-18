@@ -45,10 +45,16 @@ button {
   cursor: pointer;
 }
 
+#deleteGroupBtn, #leaveBtn{
+  border: 1px solid crimson;
+  background-color: #2b1d1d;
+  color: crimson;
+}
+
 .group-list button {
   background: #e8dfcf;
-  color: crimson;
-  border: 1px solid crimson;
+  color: #2b1d1d;
+  box-shadow: #2b1d1d 0 0 .5rem .5rem;
 }
 
 .participants {
