@@ -29,6 +29,7 @@ function getSessionId() {
 
 const sessionId = getSessionId();
 
+const homeSection = document.getElementById("homeSection");
 const groupList = document.getElementById("groupList");
 const groupNameInput = document.getElementById("groupName");
 const createGroupBtn = document.getElementById("createGroupBtn");
@@ -41,8 +42,6 @@ const participantIntention = document.getElementById("participantIntention");
 const resultDiv = document.getElementById("result");
 const drawBtn = document.getElementById("drawBtn");
 const deleteGroupBtn = document.getElementById("deleteGroupBtn");
-const leaveBtn = document.getElementById("leaveBtn");
-const editIntentionBtn = document.getElementById("editIntentionBtn");
 const autoDrawCheck = document.getElementById("autoDrawCheck");
 
 let currentGroupId = null;
@@ -66,17 +65,7 @@ createGroupBtn.onclick = async () => {
   const name = groupNameInput.value.trim();
   if (!name) return;
 
-  const snapshot = await getDocs(collection(db, "groups"));
-  const exists = snapshot.docs.some(d =>
-    d.data().name?.toLowerCase() === name.toLowerCase()
-  );
-
-  if (exists) {
-    alert("Ya existe ese grupo");
-    return;
-  }
-
-  await addDoc(collection(db, "groups"), {
+  const newDoc = await addDoc(collection(db, "groups"), {
     name,
     adminSessionId: sessionId,
     autoWeekly: false,
@@ -84,20 +73,18 @@ createGroupBtn.onclick = async () => {
   });
 
   groupNameInput.value = "";
-  loadGroups();
+  openGroup(newDoc.id);
 };
 
 async function openGroup(groupId) {
   currentGroupId = groupId;
+  homeSection.style.display = "none";
   groupSection.style.display = "block";
 
   const groupDoc = await getDoc(doc(db, "groups", groupId));
   const groupData = groupDoc.data();
 
   groupTitle.textContent = groupData.name;
-
-  deleteGroupBtn.style.display = groupData.adminSessionId === sessionId ? "block" : "none";
-  drawBtn.style.display = groupData.adminSessionId === sessionId ? "block" : "none";
 
   listenParticipants();
   listenAssignments();
@@ -116,6 +103,7 @@ joinBtn.onclick = async () => {
   });
 
   myParticipantId = docRef.id;
+  document.getElementById("joinSection").style.display = "none";
 };
 
 function listenParticipants() {
@@ -134,7 +122,6 @@ function listenParticipants() {
 
       if (data.sessionId === sessionId) {
         myParticipantId = docSnap.id;
-        joinBtn.style.display = "none";
       }
     });
   });
@@ -180,6 +167,7 @@ function listenAssignments() {
     resultDiv.innerHTML = `
       <h3>Te toca rezar por:</h3>
       <p><strong>${assigned.name}</strong></p>
+      <p>Intención: ${assigned.intention}</p>
       <p><em>"Soportense mutuamente" (Col 3, 13)</em></p>
     `;
   });

@@ -9,18 +9,18 @@
 </head>
 <body>
 
-<h1 class="main-title">Amigo Intercesor</h1>
+<div id="homeSection">
+  <h1 class="main-title">Amigo Intercesor</h1>
 
-<img class="hero-img" src="comunion-de-los-santos.jpg" />
+  <img class="hero-img" src="comunion-de-los-santos.jpg" />
 
-<h2 class="section-title">Unite</h2>
-<div id="groupList" class="group-list"></div>
+  <h2 class="section-title">o crea un grupo</h2>
+  <div id="groupList" class="group-list"></div>
 
-<p class="create-label">o crea un grupo</p>
-
-<div class="create-section">
-  <input id="groupName" placeholder="Nombre del grupo" />
-  <button id="createGroupBtn">Crear Grupo</button>
+  <div class="create-section">
+    <input id="groupName" placeholder="Nombre del grupo" />
+    <button id="createGroupBtn">Crear Grupo</button>
+  </div>
 </div>
 
 <hr />
@@ -28,9 +28,9 @@
 <div id="groupSection" style="display:none">
   <h2 id="groupTitle" class="center"></h2>
 
-  <div class="admin-actions">
+  <div class="admin-actions" style="display:flex; flex-direction:column; align-items:flex-start; gap:10px;">
     <button id="drawBtn">Sortear</button>
-    <label>
+    <label style="display:flex; align-items:center; gap:6px;">
       <input type="checkbox" id="autoDrawCheck" /> Sorteo automático domingo
     </label>
     <button id="deleteGroupBtn">Eliminar Grupo</button>
@@ -52,9 +52,10 @@
 </div>
 
 <div class="ornament">──────── ❁ ────────</div>
-<div class="footer">Reza por mi 🙏 © Lucas Fabiani 2026
-  <br>
-  <strong>Versión 1.2</strong>
+<div class="footer">
+  Reza por mi 🙏
+  <div class="copy">© Lucas Fabiani 2026</div>
+  <strong>Versión 1.3</strong>
 </div>
 
 <script type="module" src="app.js"></script>
