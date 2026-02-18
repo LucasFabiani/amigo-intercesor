@@ -1,31 +1,33 @@
 body {
   margin: 0;
-  font-family: Arial;
+  font-family: 'Playfair Display', serif;
   background: #f5f1e8;
   color: #2b1d1d;
   padding: 1rem;
 }
 
+@media(min-width:1024px){
+  body{ padding: 1rem 10%; }
+}
+
 .main-title {
   text-align: center;
-  color: #5a0f0f;
+  color: crimson;
+  font-size: 2.2rem;
 }
 
 .hero-img {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   display: block;
   margin: 1rem auto;
   border-radius: 20px;
 }
 
-.nav {
-  margin-bottom: 1rem;
-}
-
 input {
   width: 100%;
-  padding: 0.6rem;
+  box-sizing: border-box;
+  padding: 0.7rem;
   margin: 0.4rem 0;
   border-radius: 8px;
   border: 1px solid #d8d2c7;
@@ -33,19 +35,20 @@ input {
 
 button {
   width: 100%;
-  padding: 0.7rem;
+  padding: 0.8rem;
   margin: 0.4rem 0;
   border-radius: 10px;
   border: none;
-  background: #5a0f0f;
+  background: crimson;
   color: white;
   font-weight: bold;
+  cursor: pointer;
 }
 
 .group-list button {
   background: #e8dfcf;
-  color: #5a0f0f;
-  border: 1px solid #5a0f0f;
+  color: crimson;
+  border: 1px solid crimson;
 }
 
 .participants {
@@ -67,18 +70,23 @@ button {
   border-radius: 12px;
 }
 
-.center {
-  text-align: center;
+.center { text-align: center; }
+
+.create-label{
+  text-align:center;
+  color:crimson;
+  font-weight:bold;
+  margin-top:1rem;
 }
 
-.ornament {
-  text-align: center;
-  margin-top: 2rem;
-  color: #5a0f0f;
+.ornament{
+  text-align:center;
+  margin-top:2rem;
+  color:crimson;
 }
 
-.footer {
-  text-align: center;
-  margin-bottom: 2rem;
-  font-size: 0.9rem;
+.footer{
+  text-align:center;
+  margin-bottom:2rem;
+  font-size:0.9rem;
 }

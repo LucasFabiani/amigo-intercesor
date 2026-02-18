@@ -80,7 +80,11 @@ createGroupBtn.onclick = async () => {
   if (!name) return;
 
   const snapshot = await getDocs(collection(db, "groups"));
-  if (snapshot.docs.some(d => d.data().name.toLowerCase() === name.toLowerCase())) {
+  const exists = snapshot.docs.some(d =>
+    d.data().name.toLowerCase() === name.toLowerCase()
+  );
+
+  if (exists) {
     alert("Ya existe ese grupo");
     return;
   }
@@ -92,6 +96,8 @@ createGroupBtn.onclick = async () => {
     createdAt: serverTimestamp()
   });
 
+  groupNameInput.value = "";
+  await loadGroups();
   openGroup(docRef.id);
 };
 
