@@ -20,10 +20,12 @@ function getSessionId() {
 
 const sessionId = getSessionId();
 
-const isGroupPage = window.location.pathname.includes("group.html");
+// Detect page by DOM instead of pathname (fix desktop bug)
+const isHomePage = document.getElementById("createGroupBtn") !== null;
+const isGroupPage = document.getElementById("joinBtn") !== null;
 
-if (!isGroupPage) initHome();
-else initGroup();
+if (isHomePage) initHome();
+if (isGroupPage) initGroup();
 
 // ---------- HOME ----------
 
