@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oración Anónima</title>
+
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      background: #f4f6f9;
+      padding: 2rem;
+    }
+
+    h1 { margin-top: 0; }
+
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #3b82f6;
+      color: white;
+    }
+
+    input {
+      padding: 0.5rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-right: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .card {
+      background: white;
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    .highlight {
+      background: #e0f2fe;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .hidden { display: none; }
+
+  </style>
+</head>
+<body>
+
+  <h1>Oración Anónima</h1>
+
+  <div id="home">
+    <h2>Crear grupo</h2>
+    <input id="newGroupName" placeholder="Nombre del grupo" />
+    <button id="createGroup">Crear</button>
+
+    <h2>Grupos existentes</h2>
+    <ul id="groupList"></ul>
+  </div>
+
+  <div id="groupView" class="hidden">
+    <button id="backBtn">← Volver</button>
+    <h2 id="groupTitle"></h2>
+
+    <div id="myAssignment"></div>
+
+    <h3>Unirse al grupo</h3>
+    <input id="nameInput" placeholder="Tu nombre" />
+    <input id="intentionInput" placeholder="Intención" />
+    <button id="joinBtn">Unirse</button>
+
+    <div id="adminControls" class="hidden">
+      <button id="sortBtn">Sortear</button>
+    </div>
+
+    <h3>Participantes</h3>
+    <div id="participants" class="grid"></div>
+  </div>
+
+  <script type="module">
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      doc,
+      setDoc,
+      onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAnkkL17pCQseNuVcsBTh-P2CJbf4nxuss",
+        authDomain: "amigo-intercesor.firebaseapp.com",
+        projectId: "amigo-intercesor",
+        storageBucket: "amigo-intercesor.firebasestorage.app",
+        messagingSenderId: "313076200944",
+        appId: "1:313076200944:web:a00d3ab29d8014278f1935",
+        measurementId: "G-YDJX2BNSN6"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    function getSessionId() {
+      let id = localStorage.getItem("prayer_session_id");
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem("prayer_session_id", id);
+      }
+      return id;
+    }
+
+    function derangementIndexArray(n) {
+      if (n < 2) return null;
+      const arr = Array.from({ length: n }, (_, i) => i);
+
+      function shuffle(a) {
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+      }
+
+      let out;
+      do {
+        out = [...arr];
+        shuffle(out);
+      } while (out.some((v, i) => v === i));
+
+      return out;
+    }
+
+    const home = document.getElementById("home");
+    const groupView = document.getElementById("groupView");
+    const groupList = document.getElementById("groupList");
+    const participantsDiv = document.getElementById("participants");
+    const groupTitle = document.getElementById("groupTitle");
+    const myAssignmentDiv = document.getElementById("myAssignment");
+    const adminControls = document.getElementById("adminControls");
+
+    let currentGroup = null;
+    let participants = [];
+
+    // Crear grupo
+    document.getElementById("createGroup").onclick = async () => {
+      const name = document.getElementById("newGroupName").value.trim();
+      if (!name) return;
+
+      await addDoc(collection(db, "groups"), {
+        name,
+        adminSessionId: getSessionId(),
+        createdAt: serverTimestamp()
+      });
+
+      document.getElementById("newGroupName").value = "";
+    };
+
+    // Listar grupos
+    onSnapshot(collection(db, "groups"), snap => {
+      groupList.innerHTML = "";
+      snap.forEach(docSnap => {
+        const li = document.createElement("li");
+        li.textContent = docSnap.data().name;
+        li.style.cursor = "pointer";
+        li.onclick = () => openGroup(docSnap.id, docSnap.data());
+        groupList.appendChild(li);
+      });
+    });
+
+    function openGroup(id, data) {
+      currentGroup = { id, ...data };
+      home.classList.add("hidden");
+      groupView.classList.remove("hidden");
+      groupTitle.textContent = data.name;
+
+      if (data.adminSessionId === getSessionId()) {
+        adminControls.classList.remove("hidden");
+      } else {
+        adminControls.classList.add("hidden");
+      }
+
+      listenParticipants();
+      listenAssignments();
+    }
+
+    document.getElementById("backBtn").onclick = () => {
+      groupView.classList.add("hidden");
+      home.classList.remove("hidden");
+      myAssignmentDiv.innerHTML = "";
+    };
+
+    function listenParticipants() {
+      onSnapshot(collection(db, "groups", currentGroup.id, "participants"), snap => {
+        participants = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderParticipants();
+      });
+    }
+
+    function renderParticipants() {
+      participantsDiv.innerHTML = "";
+      participants.forEach(p => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `<strong>${p.name}</strong><p>${p.intention}</p>`;
+        participantsDiv.appendChild(card);
+      });
+    }
+
+    // Unirse
+    document.getElementById("joinBtn").onclick = async () => {
+      const name = document.getElementById("nameInput").value.trim();
+      const intention = document.getElementById("intentionInput").value.trim();
+      if (!name || !intention) return;
+
+      await addDoc(collection(db, "groups", currentGroup.id, "participants"), {
+        name,
+        intention,
+        sessionId: getSessionId(),
+        createdAt: serverTimestamp()
+      });
+
+      document.getElementById("nameInput").value = "";
+      document.getElementById("intentionInput").value = "";
+    };
+
+    // Sortear
+    document.getElementById("sortBtn").onclick = async () => {
+      if (currentGroup.adminSessionId !== getSessionId()) return;
+      if (participants.length < 2) return alert("Necesitan al menos 2 participantes");
+
+      const indices = derangementIndexArray(participants.length);
+
+      const pairs = participants.map((p, i) => ({
+        fromParticipantId: p.id,
+        toParticipantId: participants[indices[i]].id
+      }));
+
+      await setDoc(doc(db, "groups", currentGroup.id, "assignments", "current"), {
+        pairs,
+        generatedAt: serverTimestamp()
+      });
+    };
+
+    function listenAssignments() {
+      onSnapshot(doc(db, "groups", currentGroup.id, "assignments", "current"), snap => {
+        if (!snap.exists()) return;
+
+        const data = snap.data();
+        const myPart = participants.find(p => p.sessionId === getSessionId());
+        if (!myPart) return;
+
+        const pair = data.pairs.find(p => p.fromParticipantId === myPart.id);
+        if (!pair) return;
+
+        const assigned = participants.find(p => p.id === pair.toParticipantId);
+
+        myAssignmentDiv.innerHTML = `
+          <div class="highlight">
+            <h3>Reza por:</h3>
+            <strong>${assigned.name}</strong>
+            <p>${assigned.intention}</p>
+            <small>"Oren sin cesar" (1 Tes 5:17)</small>
+          </div>
+        `;
+      });
+    }
+
+  </script>
+
+</body>
+</html>
