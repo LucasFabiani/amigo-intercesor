@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grupo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<button onclick="window.location.href='index.html'">← Volver</button>
+
+<h2 id="groupTitle" class="center"></h2>
+
+<div class="admin-actions">
+  <button id="drawBtn">Sortear</button>
+  <label>
+    <input type="checkbox" id="autoDrawCheck" /> Sorteo automático domingo
+  </label>
+  <button id="deleteGroupBtn">Eliminar Grupo</button>
+</div>
+
+<div id="result" class="result-box"></div>
+
+<div id="joinSection">
+  <input id="participantName" placeholder="Tu nombre" />
+  <input id="participantIntention" placeholder="Intención" />
+  <button id="joinBtn">Unirme</button>
+</div>
+
+<button id="editIntentionBtn" style="display:none">Cambiar intención</button>
+<button id="leaveBtn" style="display:none">Salir del grupo</button>
+
+<h3>Participantes</h3>
+<div id="participants" class="participants"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

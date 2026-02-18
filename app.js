@@ -1,18 +1,9 @@
 import { firebaseConfig } from "./firebase-config.js";
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  deleteDoc,
-  setDoc,
-  updateDoc,
-  getDoc,
-  onSnapshot,
-  serverTimestamp
+  getFirestore, collection, addDoc, getDocs,
+  doc, deleteDoc, setDoc, updateDoc,
+  getDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const app = initializeApp(firebaseConfig);
@@ -29,85 +20,68 @@ function getSessionId() {
 
 const sessionId = getSessionId();
 
-const homeSection = document.getElementById("homeSection");
-const groupList = document.getElementById("groupList");
-const groupNameInput = document.getElementById("groupName");
-const createGroupBtn = document.getElementById("createGroupBtn");
-const groupSection = document.getElementById("groupSection");
-const groupTitle = document.getElementById("groupTitle");
-const participantsDiv = document.getElementById("participants");
-const joinBtn = document.getElementById("joinBtn");
-const participantName = document.getElementById("participantName");
-const participantIntention = document.getElementById("participantIntention");
-const resultDiv = document.getElementById("result");
-const drawBtn = document.getElementById("drawBtn");
-const deleteGroupBtn = document.getElementById("deleteGroupBtn");
-const autoDrawCheck = document.getElementById("autoDrawCheck");
+const isGroupPage = window.location.pathname.includes("group.html");
 
-let currentGroupId = null;
-let myParticipantId = null;
-let participants = [];
+if (!isGroupPage) initHome();
+else initGroup();
 
-async function loadGroups() {
+// ---------- HOME ----------
+
+async function initHome() {
+  const groupList = document.getElementById("groupList");
+  const createBtn = document.getElementById("createGroupBtn");
+  const groupNameInput = document.getElementById("groupName");
+
   const snapshot = await getDocs(collection(db, "groups"));
-  groupList.innerHTML = "";
-
   snapshot.forEach(docSnap => {
-    const data = docSnap.data();
     const btn = document.createElement("button");
-    btn.textContent = data.name;
-    btn.onclick = () => openGroup(docSnap.id);
+    btn.textContent = docSnap.data().name;
+    btn.onclick = () => {
+      window.location.href = `group.html?id=${docSnap.id}`;
+    };
     groupList.appendChild(btn);
   });
+
+  createBtn.onclick = async () => {
+    const name = groupNameInput.value.trim();
+    if (!name) return;
+
+    const newDoc = await addDoc(collection(db, "groups"), {
+      name,
+      adminSessionId: sessionId,
+      createdAt: serverTimestamp()
+    });
+
+    window.location.href = `group.html?id=${newDoc.id}`;
+  };
 }
 
-createGroupBtn.onclick = async () => {
-  const name = groupNameInput.value.trim();
-  if (!name) return;
+// ---------- GROUP ----------
 
-  const newDoc = await addDoc(collection(db, "groups"), {
-    name,
-    adminSessionId: sessionId,
-    autoWeekly: false,
-    createdAt: serverTimestamp()
-  });
+async function initGroup() {
+  const params = new URLSearchParams(window.location.search);
+  const groupId = params.get("id");
+  if (!groupId) return;
 
-  groupNameInput.value = "";
-  openGroup(newDoc.id);
-};
-
-async function openGroup(groupId) {
-  currentGroupId = groupId;
-  homeSection.style.display = "none";
-  groupSection.style.display = "block";
+  const groupTitle = document.getElementById("groupTitle");
+  const joinBtn = document.getElementById("joinBtn");
+  const participantName = document.getElementById("participantName");
+  const participantIntention = document.getElementById("participantIntention");
+  const participantsDiv = document.getElementById("participants");
+  const resultDiv = document.getElementById("result");
+  const leaveBtn = document.getElementById("leaveBtn");
+  const editBtn = document.getElementById("editIntentionBtn");
+  const deleteGroupBtn = document.getElementById("deleteGroupBtn");
+  const drawBtn = document.getElementById("drawBtn");
 
   const groupDoc = await getDoc(doc(db, "groups", groupId));
   const groupData = groupDoc.data();
-
   groupTitle.textContent = groupData.name;
 
-  listenParticipants();
-  listenAssignments();
-}
+  let myId = null;
+  let participants = [];
 
-joinBtn.onclick = async () => {
-  const name = participantName.value;
-  const intention = participantIntention.value;
-  if (!name || !intention) return;
-
-  const docRef = await addDoc(collection(db, "groups", currentGroupId, "participants"), {
-    name,
-    intention,
-    sessionId,
-    createdAt: serverTimestamp()
-  });
-
-  myParticipantId = docRef.id;
-  document.getElementById("joinSection").style.display = "none";
-};
-
-function listenParticipants() {
-  onSnapshot(collection(db, "groups", currentGroupId, "participants"), snapshot => {
+  onSnapshot(collection(db, "groups", groupId, "participants"), snapshot => {
     participantsDiv.innerHTML = "";
     participants = [];
 
@@ -115,50 +89,72 @@ function listenParticipants() {
       const data = docSnap.data();
       participants.push({ id: docSnap.id, ...data });
 
+      if (data.sessionId === sessionId) {
+        myId = docSnap.id;
+        document.getElementById("joinSection").style.display = "none";
+        leaveBtn.style.display = "block";
+        editBtn.style.display = "block";
+      }
+
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `<strong>${data.name}</strong>`;
-      participantsDiv.appendChild(card);
 
-      if (data.sessionId === sessionId) {
-        myParticipantId = docSnap.id;
+      if (groupData.adminSessionId === sessionId) {
+        const del = document.createElement("button");
+        del.textContent = "Eliminar";
+        del.onclick = () => deleteDoc(doc(db, "groups", groupId, "participants", docSnap.id));
+        card.appendChild(del);
       }
+
+      participantsDiv.appendChild(card);
     });
   });
-}
 
-function derangement(n) {
-  const arr = [...Array(n).keys()];
-  let shuffled;
-  do {
-    shuffled = [...arr].sort(() => Math.random() - 0.5);
-  } while (shuffled.some((v, i) => v === i));
-  return shuffled;
-}
+  joinBtn.onclick = async () => {
+    if (myId) return;
+    await addDoc(collection(db, "groups", groupId, "participants"), {
+      name: participantName.value,
+      intention: participantIntention.value,
+      sessionId,
+      createdAt: serverTimestamp()
+    });
+  };
 
-async function draw() {
-  if (participants.length < 2) return;
-  const indices = derangement(participants.length);
+  editBtn.onclick = async () => {
+    const newIntention = prompt("Nueva intención:");
+    if (!newIntention) return;
+    await updateDoc(doc(db, "groups", groupId, "participants", myId), {
+      intention: newIntention
+    });
+  };
 
-  const pairs = indices.map((toIndex, fromIndex) => ({
-    from: participants[fromIndex].id,
-    to: participants[toIndex].id
-  }));
+  leaveBtn.onclick = async () => {
+    await deleteDoc(doc(db, "groups", groupId, "participants", myId));
+    window.location.reload();
+  };
 
-  await setDoc(doc(db, "groups", currentGroupId, "assignments", "current"), {
-    pairs,
-    createdAt: serverTimestamp()
-  });
-}
+  deleteGroupBtn.onclick = async () => {
+    if (groupData.adminSessionId !== sessionId) return;
+    await deleteDoc(doc(db, "groups", groupId));
+    window.location.href = "index.html";
+  };
 
-drawBtn.onclick = draw;
+  drawBtn.onclick = async () => {
+    if (participants.length < 2) return;
 
-function listenAssignments() {
-  onSnapshot(doc(db, "groups", currentGroupId, "assignments", "current"), docSnap => {
-    if (!docSnap.exists()) return;
+    const shuffled = [...participants].sort(() => Math.random() - 0.5);
+    const pairs = participants.map((p, i) => ({
+      from: p.id,
+      to: shuffled[i].id
+    }));
 
-    const data = docSnap.data();
-    const pair = data.pairs.find(p => p.from === myParticipantId);
+    await setDoc(doc(db, "groups", groupId, "assignments", "current"), { pairs });
+  };
+
+  onSnapshot(doc(db, "groups", groupId, "assignments", "current"), snap => {
+    if (!snap.exists()) return;
+    const pair = snap.data().pairs.find(p => p.from === myId);
     if (!pair) return;
 
     const assigned = participants.find(p => p.id === pair.to);
@@ -167,10 +163,8 @@ function listenAssignments() {
     resultDiv.innerHTML = `
       <h3>Te toca rezar por:</h3>
       <p><strong>${assigned.name}</strong></p>
-      <p>Intención: ${assigned.intention}</p>
+      <p>${assigned.intention}</p>
       <p><em>"Soportense mutuamente" (Col 3, 13)</em></p>
     `;
   });
 }
-
-loadGroups();
